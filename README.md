@@ -22,14 +22,14 @@
 
 ```powershell
 # 获取依赖并运行网页调试版
-& 'D:\Apps\flutter\bin\flutter.bat' pub get
-& 'D:\Apps\flutter\bin\flutter.bat' run -d chrome
+flutter pub get
+flutter run -d chrome
 
 # Android ARM64 发布包
-& 'D:\Apps\flutter\bin\flutter.bat' build apk --release --target-platform android-arm64
+flutter build apk --release --target-platform android-arm64
 
 # 网页发布包
-& 'D:\Apps\flutter\bin\flutter.bat' build web --release
+flutter build web --release
 ```
 
 Windows 本地构建可使用：
@@ -124,8 +124,8 @@ Set-Location C:\richeng\deploy
 ## 验证
 
 ```powershell
-& 'D:\Apps\flutter\bin\flutter.bat' analyze
-& 'D:\Apps\flutter\bin\flutter.bat' test
+flutter analyze
+flutter test
 python server\test_server.py
 ```
 
