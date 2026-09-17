@@ -47,6 +47,8 @@ const aiProviderPresets = [
 // API Key 单独保存，不进入工作空间、JSON 备份或跨端同步数据。
 class AiConfiguration {
   static const _keyName = 'richeng.ai.personal.key';
+  // HTTP 网页不具备 Web Crypto 安全上下文时，仅在该浏览器本机兜底保存。
+  static const _fallbackKeyName = 'richeng.ai.personal.key.fallback';
   static const _storage = FlutterSecureStorage();
   final AiMode mode;
   final String serverEndpoint, apiBaseUrl, model;
@@ -60,7 +62,7 @@ class AiConfiguration {
   });
 
   static Future<AiConfiguration> load(SharedPreferences preferences) async {
-    final hasKey = (await _storage.read(key: _keyName))?.isNotEmpty ?? false;
+    final hasKey = (await readApiKey(preferences))?.isNotEmpty ?? false;
     return AiConfiguration(
       mode: preferences.getString('ai.mode') == AiMode.personal.name
           ? AiMode.personal
@@ -88,7 +90,13 @@ class AiConfiguration {
       preferences.setString('ai.personal.model', model),
     ]);
     if (apiKey != null && apiKey.isNotEmpty) {
-      await _storage.write(key: _keyName, value: apiKey);
+      try {
+        await _storage.write(key: _keyName, value: apiKey);
+        await preferences.remove(_fallbackKeyName);
+      } catch (_) {
+        // HTTP 网页端不支持安全存储时仍允许本机使用，不会进入导出或云同步。
+        await preferences.setString(_fallbackKeyName, apiKey);
+      }
     }
   }
 
@@ -98,11 +106,20 @@ class AiConfiguration {
       preferences.remove('ai.endpoint'),
       preferences.remove('ai.personal.baseUrl'),
       preferences.remove('ai.personal.model'),
-      _storage.delete(key: _keyName),
+      _storage.delete(key: _keyName).catchError((_) {}),
+      preferences.remove(_fallbackKeyName),
     ]);
   }
 
-  static Future<String?> readApiKey() => _storage.read(key: _keyName);
+  static Future<String?> readApiKey(SharedPreferences preferences) async {
+    try {
+      final value = await _storage.read(key: _keyName);
+      if (value != null && value.isNotEmpty) return value;
+    } catch (_) {
+      // 继续读取 HTTP 网页端的本机兜底值。
+    }
+    return preferences.getString(_fallbackKeyName);
+  }
 }
 
 // 个人接口填写 OpenAI 兼容根地址；也接受已填写到 chat/completions 的完整地址。

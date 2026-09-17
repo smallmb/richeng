@@ -2486,6 +2486,7 @@ class _WorkspaceState extends State<Workspace> {
     var selectedMode = configuration.mode;
     var checking = false;
     var fetchingModels = false;
+    var apiKeyVisible = false;
     AiProviderPreset? selectedPreset;
     var detectedModels = <String>[];
     String? status;
@@ -2603,13 +2604,23 @@ class _WorkspaceState extends State<Workspace> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: apiKey,
-                    obscureText: true,
+                    obscureText: !apiKeyVisible,
                     autocorrect: false,
                     decoration: InputDecoration(
                       labelText: 'API Key',
                       hintText: configuration.hasApiKey
                           ? '已安全保存；留空则继续使用'
                           : '请输入 API Key',
+                      suffixIcon: IconButton(
+                        tooltip: apiKeyVisible ? '隐藏 API Key' : '显示 API Key',
+                        onPressed: () =>
+                            update(() => apiKeyVisible = !apiKeyVisible),
+                        icon: Icon(
+                          apiKeyVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -2624,7 +2635,9 @@ class _WorkspaceState extends State<Workspace> {
                                 );
                                 final key = apiKey.text.trim().isNotEmpty
                                     ? apiKey.text.trim()
-                                    : await AiConfiguration.readApiKey();
+                                    : await AiConfiguration.readApiKey(
+                                        store.preferences,
+                                      );
                                 if (endpoint == null ||
                                     key == null ||
                                     key.isEmpty) {
@@ -2719,7 +2732,7 @@ class _WorkspaceState extends State<Workspace> {
                   ],
                   const SizedBox(height: 8),
                   const Text(
-                    '网页端还要求接口允许浏览器跨域访问；若被拦截，请使用 Windows、Android 或服务端 AI。',
+                    '网页端要求接口允许跨域访问。HTTP 网页无法使用安全存储时，Key 仅保存在此浏览器本机；建议使用 HTTPS。',
                     style: TextStyle(fontSize: 12, color: secondary),
                   ),
                 ],
@@ -2763,7 +2776,7 @@ class _WorkspaceState extends State<Workspace> {
                           : normalizeOpenAiEndpoint(baseUrl.text);
                       final key = apiKey.text.trim().isNotEmpty
                           ? apiKey.text.trim()
-                          : await AiConfiguration.readApiKey();
+                          : await AiConfiguration.readApiKey(store.preferences);
                       if (endpoint == null ||
                           (selectedMode == AiMode.personal &&
                               (model.text.trim().isEmpty ||
@@ -3303,7 +3316,7 @@ class _WorkspaceState extends State<Workspace> {
                       }
                       final personalKey =
                           aiConfiguration.mode == AiMode.personal
-                          ? await AiConfiguration.readApiKey()
+                          ? await AiConfiguration.readApiKey(store.preferences)
                           : null;
                       final personalEndpoint =
                           aiConfiguration.mode == AiMode.personal
