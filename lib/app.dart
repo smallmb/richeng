@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'store.dart';
 import 'cloud.dart';
+import 'ai.dart';
 import 'motion.dart';
 import 'reminders.dart';
 
@@ -2160,10 +2161,8 @@ class _WorkspaceState extends State<Workspace> {
             ),
             ListTile(
               leading: const Icon(Icons.auto_awesome_outlined),
-              title: const Text('AI 服务地址'),
-              subtitle: Text(
-                store.preferences.getString('ai.endpoint') ?? '未配置 · 可使用本地清单整理',
-              ),
+              title: const Text('AI 规划服务'),
+              subtitle: Text(_aiConfigurationSummary()),
               trailing: const Icon(Icons.chevron_right),
               onTap: configureAi,
             ),
@@ -2249,6 +2248,14 @@ class _WorkspaceState extends State<Workspace> {
       ),
     ],
   );
+
+  String _aiConfigurationSummary() {
+    if (store.preferences.getString('ai.mode') == AiMode.personal.name) {
+      final model = store.preferences.getString('ai.personal.model');
+      return model == null || model.isEmpty ? '个人接口 · 未选择模型' : '个人接口 · $model';
+    }
+    return store.preferences.getString('ai.endpoint') ?? '未配置 · 可使用本地清单整理';
+  }
 
   Future<void> importHistoryDialog() async {
     await showDialog<void>(
@@ -2470,50 +2477,114 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   Future<void> configureAi() async {
-    final controller = TextEditingController(
-      text: store.preferences.getString('ai.endpoint'),
-    );
+    final configuration = await AiConfiguration.load(store.preferences);
+    if (!mounted) return;
+    final server = TextEditingController(text: configuration.serverEndpoint);
+    final baseUrl = TextEditingController(text: configuration.apiBaseUrl);
+    final model = TextEditingController(text: configuration.model);
+    final apiKey = TextEditingController();
+    var selectedMode = configuration.mode;
     var checking = false;
     String? status;
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => AlertDialog(
-          title: const Text('连接 AI 服务'),
+          title: const Text('AI 规划服务'),
           content: SizedBox(
-            width: dialogWidth(ctx, 440),
+            width: dialogWidth(ctx, 480),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '填写日程服务根地址，软件会自动补全 /api/plan。模型密钥仅保存在服务端，分析时只发送当前输入的材料。',
-                  style: TextStyle(fontSize: 13, color: secondary),
+                SegmentedButton<AiMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: AiMode.server,
+                      icon: Icon(Icons.cloud_outlined),
+                      label: Text('服务端 AI'),
+                    ),
+                    ButtonSegment(
+                      value: AiMode.personal,
+                      icon: Icon(Icons.key_outlined),
+                      label: Text('个人接口'),
+                    ),
+                  ],
+                  selected: {selectedMode},
+                  onSelectionChanged: checking
+                      ? null
+                      : (value) => update(() {
+                          selectedMode = value.first;
+                          status = null;
+                        }),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'AI 服务根地址',
-                    hintText: 'https://你的服务',
+                if (selectedMode == AiMode.server) ...[
+                  const Text(
+                    '填写日程服务根地址，软件会自动补全 /api/plan。模型密钥仅保存在服务端。',
+                    style: TextStyle(fontSize: 13, color: secondary),
                   ),
-                ),
-                if (cloud.endpoint.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: server,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'AI 服务根地址',
+                      hintText: 'https://你的服务',
+                    ),
+                  ),
+                  if (cloud.endpoint.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () =>
+                          update(() => server.text = cloud.endpoint),
+                      icon: const Icon(Icons.cloud_outlined, size: 16),
+                      label: const Text('使用当前同步服务器'),
+                    ),
+                  ],
+                ] else ...[
+                  const Text(
+                    '填写兼容 OpenAI Chat Completions 的接口、模型和 API Key。Key 只安全保存在当前设备，不会备份或同步。',
+                    style: TextStyle(fontSize: 13, color: secondary),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: baseUrl,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'API 地址',
+                      hintText: 'https://api.openai.com/v1',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: model,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: '模型名称',
+                      hintText: '例如 gpt-4o-mini',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: apiKey,
+                    obscureText: true,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      labelText: 'API Key',
+                      hintText: configuration.hasApiKey
+                          ? '已安全保存；留空则继续使用'
+                          : '请输入 API Key',
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () =>
-                        update(() => controller.text = cloud.endpoint),
-                    icon: const Icon(Icons.cloud_outlined, size: 16),
-                    label: const Text('使用当前同步服务器'),
+                  const Text(
+                    '网页端还要求接口允许浏览器跨域访问；若被拦截，请使用 Windows、Android 或服务端 AI。',
+                    style: TextStyle(fontSize: 12, color: secondary),
                   ),
                 ],
-                const SizedBox(height: 4),
-                const Text(
-                  '保存前可测试服务连通性和模型是否已配置。',
-                  style: TextStyle(fontSize: 12, color: secondary),
-                ),
                 if (status != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
@@ -2534,10 +2605,11 @@ class _WorkspaceState extends State<Workspace> {
             TextButton(
               onPressed: checking
                   ? null
-                  : () => update(() {
-                      controller.clear();
-                      status = '已清空 AI 服务配置。点击保存后生效。';
-                    }),
+                  : () async {
+                      await AiConfiguration.clear(store.preferences);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      refresh();
+                    },
               child: const Text('清空'),
             ),
             TextButton(
@@ -2548,9 +2620,22 @@ class _WorkspaceState extends State<Workspace> {
               onPressed: checking
                   ? null
                   : () async {
-                      final endpoint = normalizeAiEndpoint(controller.text);
-                      if (endpoint == null) {
-                        update(() => status = '请输入完整的 HTTP 或 HTTPS 服务地址。');
+                      final endpoint = selectedMode == AiMode.server
+                          ? normalizeAiEndpoint(server.text)
+                          : normalizeOpenAiEndpoint(baseUrl.text);
+                      final key = apiKey.text.trim().isNotEmpty
+                          ? apiKey.text.trim()
+                          : await AiConfiguration.readApiKey();
+                      if (endpoint == null ||
+                          (selectedMode == AiMode.personal &&
+                              (model.text.trim().isEmpty ||
+                                  key == null ||
+                                  key.isEmpty))) {
+                        update(
+                          () => status = selectedMode == AiMode.server
+                              ? '请输入完整的 HTTP 或 HTTPS 服务地址。'
+                              : '请填写 API 地址、模型名称和 API Key。',
+                        );
                         return;
                       }
                       update(() {
@@ -2559,19 +2644,31 @@ class _WorkspaceState extends State<Workspace> {
                       });
                       try {
                         final response = await http
-                            .get(aiHealthUri(endpoint))
+                            .get(
+                              selectedMode == AiMode.server
+                                  ? aiHealthUri(endpoint)
+                                  : modelsEndpoint(endpoint),
+                              headers: selectedMode == AiMode.personal
+                                  ? {'Authorization': 'Bearer $key'}
+                                  : null,
+                            )
                             .timeout(const Duration(seconds: 10));
-                        final data = jsonDecode(
-                          utf8.decode(response.bodyBytes),
-                        );
-                        if (response.statusCode != 200 || data is! Map) {
+                        if (response.statusCode < 200 ||
+                            response.statusCode >= 300) {
                           throw Exception();
                         }
-                        update(
-                          () => status = data['ai'] == true
-                              ? '服务可用，AI 模型已配置。'
-                              : '服务可达，但服务端尚未配置 AI 模型。',
-                        );
+                        if (selectedMode == AiMode.personal) {
+                          update(() => status = '接口可用，认证已通过。请保存后在 AI 分析中验证模型。');
+                        } else {
+                          final data = jsonDecode(
+                            utf8.decode(response.bodyBytes),
+                          );
+                          update(
+                            () => status = data is Map && data['ai'] == true
+                                ? '服务可用，AI 模型已配置。'
+                                : '服务可达，但服务端尚未配置 AI 模型。',
+                          );
+                        }
                       } catch (_) {
                         update(() => status = '无法连接服务，请检查地址、网络和服务器状态。');
                       } finally {
@@ -2584,17 +2681,35 @@ class _WorkspaceState extends State<Workspace> {
               onPressed: checking
                   ? null
                   : () async {
-                      final value = controller.text.trim();
-                      final endpoint = value.isEmpty
+                      final serverEndpoint = server.text.trim().isEmpty
                           ? ''
-                          : normalizeAiEndpoint(value);
-                      if (endpoint == null) {
-                        toast('请输入完整的 HTTP 或 HTTPS 地址');
+                          : normalizeAiEndpoint(server.text);
+                      final personalEndpoint = baseUrl.text.trim().isEmpty
+                          ? ''
+                          : normalizeOpenAiEndpoint(baseUrl.text);
+                      final isValid = selectedMode == AiMode.server
+                          ? serverEndpoint != null
+                          : personalEndpoint != null &&
+                                model.text.trim().isNotEmpty &&
+                                (apiKey.text.trim().isNotEmpty ||
+                                    configuration.hasApiKey);
+                      if (!isValid) {
+                        toast(
+                          selectedMode == AiMode.server
+                              ? '请输入完整的 HTTP 或 HTTPS 地址'
+                              : '请填写 API 地址、模型名称和 API Key',
+                        );
                         return;
                       }
-                      await store.preferences.setString(
-                        'ai.endpoint',
-                        endpoint,
+                      await AiConfiguration.save(
+                        store.preferences,
+                        mode: selectedMode,
+                        serverEndpoint: serverEndpoint ?? '',
+                        apiBaseUrl: personalEndpoint ?? '',
+                        model: model.text.trim(),
+                        apiKey: apiKey.text.trim().isEmpty
+                            ? null
+                            : apiKey.text.trim(),
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                       refresh();
@@ -2605,7 +2720,10 @@ class _WorkspaceState extends State<Workspace> {
         ),
       ),
     );
-    controller.dispose();
+    server.dispose();
+    baseUrl.dispose();
+    model.dispose();
+    apiKey.dispose();
   }
 
   Future<void> restoreBackup() async {
@@ -3037,11 +3155,30 @@ class _WorkspaceState extends State<Workspace> {
                         );
                         return;
                       }
-                      final endpoint = store.preferences.getString(
-                        'ai.endpoint',
+                      final aiConfiguration = await AiConfiguration.load(
+                        store.preferences,
                       );
-                      if (endpoint == null || endpoint.isEmpty) {
+                      if (aiConfiguration.mode == AiMode.server &&
+                          aiConfiguration.serverEndpoint.isEmpty) {
                         update(() => error = '尚未连接 AI 服务。可先使用本地整理，或在设置中配置。');
+                        return;
+                      }
+                      final personalKey =
+                          aiConfiguration.mode == AiMode.personal
+                          ? await AiConfiguration.readApiKey()
+                          : null;
+                      final personalEndpoint =
+                          aiConfiguration.mode == AiMode.personal
+                          ? normalizeOpenAiEndpoint(aiConfiguration.apiBaseUrl)
+                          : null;
+                      if (aiConfiguration.mode == AiMode.personal &&
+                          (personalEndpoint == null ||
+                              aiConfiguration.model.isEmpty ||
+                              personalKey == null ||
+                              personalKey.isEmpty)) {
+                        update(
+                          () => error = '个人 AI 接口尚未配置完整，请在设置中填写地址、模型和 API Key。',
+                        );
                         return;
                       }
                       if (source.text.trim().isEmpty) {
@@ -3057,37 +3194,53 @@ class _WorkspaceState extends State<Workspace> {
                         error = null;
                       });
                       try {
-                        final response = await http
-                            .post(
-                              Uri.parse(endpoint),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                if (cloud.connected &&
-                                    Uri.parse(endpoint).origin ==
-                                        Uri.parse(cloud.endpoint).origin)
-                                  'Authorization': 'Bearer ${cloud.token}',
-                              },
-                              body: jsonEncode({
-                                'text': source.text,
-                                'today': dateKey(DateTime.now()),
-                                'mode': goalMode ? 'goal' : 'material',
-                                if (goalMode) 'deadline': goalDeadline,
-                                if (goalMode) 'weeklyHours': weeklyHours,
-                              }),
-                            )
-                            .timeout(const Duration(seconds: 60));
-                        if (response.statusCode != 200) {
-                          throw Exception('服务返回 ${response.statusCode}');
+                        late final List<Phase> phases;
+                        if (aiConfiguration.mode == AiMode.personal) {
+                          phases = await requestPersonalPlan(
+                            endpoint: personalEndpoint!,
+                            apiKey: personalKey!,
+                            model: aiConfiguration.model,
+                            mode: goalMode ? 'goal' : 'material',
+                            text: source.text,
+                            today: dateKey(DateTime.now()),
+                            deadline: goalMode ? goalDeadline : null,
+                            weeklyHours: goalMode ? weeklyHours : null,
+                          );
+                        } else {
+                          final endpoint = aiConfiguration.serverEndpoint;
+                          final response = await http
+                              .post(
+                                Uri.parse(endpoint),
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  if (cloud.connected &&
+                                      Uri.parse(endpoint).origin ==
+                                          Uri.parse(cloud.endpoint).origin)
+                                    'Authorization': 'Bearer ${cloud.token}',
+                                },
+                                body: jsonEncode({
+                                  'text': source.text,
+                                  'today': dateKey(DateTime.now()),
+                                  'mode': goalMode ? 'goal' : 'material',
+                                  if (goalMode) 'deadline': goalDeadline,
+                                  if (goalMode) 'weeklyHours': weeklyHours,
+                                }),
+                              )
+                              .timeout(const Duration(seconds: 60));
+                          if (response.statusCode != 200) {
+                            throw Exception('服务返回 ${response.statusCode}');
+                          }
+                          final payload = jsonDecode(
+                            utf8.decode(response.bodyBytes),
+                          ) as Map<String, dynamic>;
+                          phases = (payload['phases'] as List)
+                              .map(
+                                (s) => Phase.fromJson(
+                                  Map<String, dynamic>.from(s),
+                                ),
+                              )
+                              .toList();
                         }
-                        final payload = jsonDecode(
-                          utf8.decode(response.bodyBytes),
-                        ) as Map<String, dynamic>;
-                        final phases = (payload['phases'] as List)
-                            .map(
-                              (s) =>
-                                  Phase.fromJson(Map<String, dynamic>.from(s)),
-                            )
-                            .toList();
                         if (phases.isEmpty ||
                             phases.expand((p) => p.tasks).isEmpty) {
                           throw Exception('未识别到任务');
@@ -3105,9 +3258,13 @@ class _WorkspaceState extends State<Workspace> {
                             sourceLabel = goalMode ? 'AI 目标规划' : 'AI 材料分析';
                           });
                         }
-                      } catch (_) {
+                      } catch (exception) {
                         if (ctx.mounted) {
-                          update(() => error = '分析失败：请检查服务地址、网络及返回格式。原始材料已保留。');
+                          final message = exception.toString().replaceFirst(
+                            'Exception: ',
+                            '',
+                          );
+                          update(() => error = '分析失败：$message。原始材料已保留。');
                         }
                       } finally {
                         if (ctx.mounted) update(() => busy = false);
