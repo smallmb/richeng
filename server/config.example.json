@@ -1,0 +1,16 @@
+{
+  "AI_BASE_URL": "",
+  "AI_MODEL": "",
+  "AI_API_KEY": "",
+  "EMAIL_MODE": "disabled",
+  "EMAIL_VERIFICATION_REQUIRED": "0",
+  "SMTP_HOST": "",
+  "SMTP_PORT": "587",
+  "SMTP_USERNAME": "",
+  "SMTP_PASSWORD": "",
+  "SMTP_FROM": "",
+  "RICHENG_HOST": "127.0.0.1",
+  "RICHENG_PORT": "5318",
+  "RICHENG_WS_PORT": "5319",
+  "RICHENG_ORIGIN": ""
+}

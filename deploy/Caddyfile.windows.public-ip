@@ -1,0 +1,20 @@
+# 中文说明：当前无域名时的公网 IP 部署配置，包含网页、API 与 WebSocket。
+http://8.166.118.106 {
+    encode zstd gzip
+
+    @ws path /ws
+    handle @ws {
+        reverse_proxy 127.0.0.1:5319
+    }
+
+    @api path /api/* /health
+    handle @api {
+        reverse_proxy 127.0.0.1:5318
+    }
+
+    handle {
+        root * C:/richeng/web
+        try_files {path} /index.html
+        file_server
+    }
+}

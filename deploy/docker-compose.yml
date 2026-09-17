@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: ../server
+    restart: unless-stopped
+    environment:
+      RICHENG_DB: /data/richeng.sqlite3
+      RICHENG_ORIGIN: https://${APP_DOMAIN}
+      AI_BASE_URL: ${AI_BASE_URL}
+      AI_MODEL: ${AI_MODEL}
+      AI_API_KEY: ${AI_API_KEY}
+      EMAIL_MODE: smtp
+      EMAIL_VERIFICATION_REQUIRED: "1"
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+    volumes:
+      - richeng_data:/data
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  richeng_data:
+  caddy_data:
+  caddy_config:

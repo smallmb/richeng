@@ -1,0 +1,621 @@
+[
+  {
+    "id": "P0",
+    "badge": "P0",
+    "color": "#B5D4F4",
+    "tc": "#0C447C",
+    "bar": "#378ADD",
+    "name": "环境 & PoC",
+    "weeks": "第1—2周",
+    "tasks": [
+      {
+        "n": "安装 Python 3.10+ 并验证 pip 可用",
+        "d": 1,
+        "hint": "python --version 确认版本"
+      },
+      {
+        "n": "安装 Node.js 24.x x64 和 pnpm",
+        "d": 1,
+        "hint": "node -v / pnpm -v 验证"
+      },
+      {
+        "n": "创建项目 Git 仓库，初始化目录结构",
+        "d": 1,
+        "hint": "src/ data/ docs/ tests/ 四个根目录"
+      },
+      {
+        "n": "AKShare 安装并拉取 1 只股票日线数据",
+        "d": 1,
+        "hint": "ak.stock_zh_a_hist() 跑通即可"
+      },
+      {
+        "n": "DuckDB 安装，创建第一张空表",
+        "d": 1,
+        "hint": "duckdb.connect() 写入一行测试数据"
+      },
+      {
+        "n": "DeepSeek API Key 配置，调通单次对话",
+        "d": 1,
+        "hint": "用 requests 发一个最简单的 chat 请求"
+      },
+      {
+        "n": "RSSHub Docker 启动，验证财联社频道可拉取",
+        "d": 2,
+        "hint": "docker run 后访问 /cls/telegraph"
+      },
+      {
+        "n": "安装 DeepSeek Harness，跑通 dsh web 命令",
+        "d": 2,
+        "hint": "npx @deepseek-ai/dsh web 能打开 UI"
+      },
+      {
+        "n": "写 docs/version-lock.md，记录 Harness commit hash",
+        "d": 1,
+        "hint": "git -C node_modules/dsh rev-parse HEAD"
+      },
+      {
+        "n": "用 CrewAI 实现最小情感评估 Agent（Plan B PoC）",
+        "d": 2,
+        "hint": "输入一条新闻，输出 {score, sentiment, reason}"
+      },
+      {
+        "n": "AKShare 拉取 30 只样本股日线，存入 DuckDB",
+        "d": 2,
+        "hint": "securities_master 表第一批数据"
+      },
+      {
+        "n": "可选：Docker 启动 Neo4j，验证 Graphiti 写入一条 Episode",
+        "d": 3,
+        "hint": "可推后，不阻塞主线"
+      }
+    ]
+  },
+  {
+    "id": "P1",
+    "badge": "P1",
+    "color": "#9FE1CB",
+    "tc": "#04342C",
+    "bar": "#1D9E75",
+    "name": "统一数据管线",
+    "weeks": "第3—4周",
+    "tasks": [
+      {
+        "n": "下载 Loughran-McDonald 金融情感词典",
+        "d": 1,
+        "hint": "loughranmcdonald.com 下载 CSV"
+      },
+      {
+        "n": "定义 NewsItem Pydantic v2 Schema（基础字段）",
+        "d": 1,
+        "hint": "source_id / title / content / publish_time"
+      },
+      {
+        "n": "NewsItem 加入时间戳字段：available_at / first_tradable_time / effective_trade_date",
+        "d": 2,
+        "hint": "先设为 Optional，P2 再填充逻辑"
+      },
+      {
+        "n": "实现财联社 Provider：拉取并解析 RSS",
+        "d": 2,
+        "hint": "统一输出 NewsItem 列表"
+      },
+      {
+        "n": "实现华尔街见闻 Provider",
+        "d": 2,
+        "hint": "与财联社共享 BaseProvider 接口"
+      },
+      {
+        "n": "实现公告 Provider（巨潮或交易所公告页面）",
+        "d": 2,
+        "hint": "公告比新闻稳定，优先跑通"
+      },
+      {
+        "n": "Raw 层落盘：JSONL 格式，按日期分目录",
+        "d": 1,
+        "hint": "data/raw/YYYY-MM-DD/*.jsonl"
+      },
+      {
+        "n": "标题指纹去重：同一 source 内相同标题去重",
+        "d": 2,
+        "hint": "hashlib.md5(title.encode()).hexdigest()"
+      },
+      {
+        "n": "跨源重复标记：相似标题打 is_duplicate=True，不删除",
+        "d": 2,
+        "hint": "相似度 > 0.85 标记，保留原始数据"
+      },
+      {
+        "n": "A/HK 实体映射：规则匹配（公司名/简称/代码）",
+        "d": 2,
+        "hint": "匹配结果写 matched_securities + match_method"
+      },
+      {
+        "n": "DuckDB 建立四张主表：news_events / price_daily / securities_master / factor_scores",
+        "d": 2,
+        "hint": "建表 SQL 写入 db/schema.sql"
+      },
+      {
+        "n": "Loughran-McDonald 词典情感计算，结果存 factor_scores",
+        "d": 2,
+        "hint": "计算 pos_score / neg_score / net_score"
+      },
+      {
+        "n": "实体映射 Agent 兜底：规则未匹配时调 LLM",
+        "d": 3,
+        "hint": "调用量少，成本可控"
+      },
+      {
+        "n": "数据质量 pytest：available_at ≥ publish_time，去重率统计",
+        "d": 2,
+        "hint": "tests/test_data_quality.py"
+      }
+    ]
+  },
+  {
+    "id": "P2",
+    "badge": "P2",
+    "color": "#FAC775",
+    "tc": "#412402",
+    "bar": "#BA7517",
+    "name": "事件时间对齐",
+    "weeks": "第5周",
+    "tasks": [
+      {
+        "n": "获取 A 股交易日历，存入 DuckDB trading_calendar 表",
+        "d": 1,
+        "hint": "AKShare tool_trade_date_hist_sina()"
+      },
+      {
+        "n": "publish_time UTC 标准化：统一时区转换函数",
+        "d": 1,
+        "hint": "所有来源时区写在 providers/tz_map.py"
+      },
+      {
+        "n": "新闻 available_at 推断：抓取时间 + 传播延迟估计",
+        "d": 2,
+        "hint": "保守策略：抓取时间即为可用时间"
+      },
+      {
+        "n": "公告 available_at 推断：XBRL 披露时间或保守 T+1 开盘",
+        "d": 2,
+        "hint": "公告时间不确定时，统一用 9:30 次日"
+      },
+      {
+        "n": "first_tradable_time 计算：盘中 vs 盘后判断",
+        "d": 2,
+        "hint": "available_at < 15:00 → 当日；否则次日 9:30"
+      },
+      {
+        "n": "节假日跳过：first_tradable_time 跨越节假日时顺延",
+        "d": 2,
+        "hint": "查 trading_calendar 表"
+      },
+      {
+        "n": "effective_trade_date 映射：日频因子的最终交易日期",
+        "d": 2,
+        "hint": "= first_tradable_time 对应的交易日"
+      },
+      {
+        "n": "时间对齐单元测试：pytest 覆盖边界场景",
+        "d": 2,
+        "hint": "盘中/盘后/跨节假日三种场景各写测试"
+      },
+      {
+        "n": "全样本无数据泄露扫描：factor_date ≥ effective_trade_date",
+        "d": 2,
+        "hint": "全量 SQL 扫描，0 条违规"
+      },
+      {
+        "n": "snapshot_v1 冻结：DuckDB 备份 + Parquet 导出",
+        "d": 1,
+        "hint": "cp 一份 .duckdb 文件存档"
+      }
+    ]
+  },
+  {
+    "id": "P3",
+    "badge": "P3",
+    "color": "#F7C1C1",
+    "tc": "#501313",
+    "bar": "#E24B4A",
+    "name": "多 Agent 情感评估",
+    "weeks": "第6—7周",
+    "tasks": [
+      {
+        "n": "手动标注 50 条新闻情感，建立小型验证集",
+        "d": 1,
+        "hint": "Excel 标注：正面/负面/中性 + 理由"
+      },
+      {
+        "n": "DeepSeek API 单条情感评估，调试 Prompt",
+        "d": 1,
+        "hint": "让模型只输出 JSON，不要废话"
+      },
+      {
+        "n": "设计 SecuritySentiment JSON Schema",
+        "d": 2,
+        "hint": "{score:-1~1, sentiment, confidence, reason, entities[]}"
+      },
+      {
+        "n": "CrewAI 情感评估 Agent（Plan B）完整实现",
+        "d": 2,
+        "hint": "先做这个，Python 纯原生，更容易调试"
+      },
+      {
+        "n": "CrewAI Agent 批量处理 50 条验证集，计算与手动标注吻合率",
+        "d": 2,
+        "hint": "目标 >75% 吻合"
+      },
+      {
+        "n": "Harness TextDataTool：从 DuckDB 读取 cleaned news",
+        "d": 2,
+        "hint": "Tool 输出 NewsItem 列表给 Agent"
+      },
+      {
+        "n": "Harness 情感评估 Agent：Prompt + Schema 校验",
+        "d": 3,
+        "hint": "model_version / prompt_version 字段必须记录"
+      },
+      {
+        "n": "SQLite 缓存层：相同 source_id 不重复调用 API",
+        "d": 2,
+        "hint": "cache/{source_id}.json 文件缓存"
+      },
+      {
+        "n": "批量处理 300+ 条样本新闻，记录耗时和费用",
+        "d": 2,
+        "hint": "估算完整实验的 API 成本"
+      },
+      {
+        "n": "GraphMemoryTool：查询 DuckDB company_event 表（Graphiti 降级版）",
+        "d": 2,
+        "hint": "返回该公司近 30 天历史事件摘要"
+      },
+      {
+        "n": "Harness vs CrewAI 输出一致性验证（主要新闻样本）",
+        "d": 2,
+        "hint": "情感方向一致率 >80% 即可"
+      },
+      {
+        "n": "Replay 机制：固定输入可复现相同输出",
+        "d": 3,
+        "hint": "写 tests/test_agent_replay.py"
+      },
+      {
+        "n": "可选：Graphiti Episode 写入（高价值新闻/公告）",
+        "d": 3,
+        "hint": "确认实体/事实/关系时间语义正确"
+      }
+    ]
+  },
+  {
+    "id": "P4",
+    "badge": "P4",
+    "color": "#F0A8C0",
+    "tc": "#4B1528",
+    "bar": "#D4537E",
+    "name": "新闻总结 & 主编 Agent",
+    "weeks": "第8周",
+    "tasks": [
+      {
+        "n": "LM 词典情感得分分布可视化（直方图）",
+        "d": 1,
+        "hint": "Jupyter Notebook，pandas + matplotlib"
+      },
+      {
+        "n": "LLM 情感得分分布可视化，与 LM 词典对比",
+        "d": 1,
+        "hint": "两种方法的 score 分布差异图"
+      },
+      {
+        "n": "两种方法情感方向一致率分析",
+        "d": 2,
+        "hint": "有多少条新闻两者方向相反？举例分析"
+      },
+      {
+        "n": "Markdown 研报模板设计",
+        "d": 1,
+        "hint": "固定章节：概览/重要新闻/情感趋势/风险提示"
+      },
+      {
+        "n": "新闻总结 Agent（CrewAI 版）",
+        "d": 2,
+        "hint": "输入 N 条新闻，输出 100 字摘要 + 关键实体"
+      },
+      {
+        "n": "新闻总结 Agent（Harness 版）",
+        "d": 3,
+        "hint": "与 CrewAI 版对应实现"
+      },
+      {
+        "n": "主编 Agent：聚合情感 + 摘要 + 行情，生成 Markdown 正文",
+        "d": 3,
+        "hint": "确定性模板兜底，防止幻觉"
+      },
+      {
+        "n": "PDF 导出 PoC：Markdown + 图表 → PDF",
+        "d": 2,
+        "hint": "用 weasyprint 或 reportlab 实现"
+      },
+      {
+        "n": "生成第一份《示例行业周报》Markdown 文件",
+        "d": 2,
+        "hint": "内容可简单，流程要跑通"
+      }
+    ]
+  },
+  {
+    "id": "P5",
+    "badge": "P5",
+    "color": "#C0DD97",
+    "tc": "#173404",
+    "bar": "#5EA822",
+    "name": "因子有效性检验",
+    "weeks": "第9—10周",
+    "tasks": [
+      {
+        "n": "Security Sentiment 日频聚合：每只股票每天一个情感得分",
+        "d": 1,
+        "hint": "effective_trade_date 分组取均值"
+      },
+      {
+        "n": "Company Sentiment 聚合：过去 N 天情感衰减加权",
+        "d": 2,
+        "hint": "指数衰减权重，近期新闻权重更高"
+      },
+      {
+        "n": "计算 IC（1 日持有期）：情感得分 vs 次日收益 Spearman 相关",
+        "d": 2,
+        "hint": "scipy.stats.spearmanr()"
+      },
+      {
+        "n": "计算 IC（多持有期：1/2/3/5/10 日）",
+        "d": 2,
+        "hint": "循环计算，存入 factor_scores 表"
+      },
+      {
+        "n": "IC 衰减曲线绘制：x 轴持有期，y 轴 IC 均值",
+        "d": 1,
+        "hint": "matplotlib 折线图，找到最佳持有期"
+      },
+      {
+        "n": "IC_IR 计算：IC 均值 / IC 标准差",
+        "d": 1,
+        "hint": "IC_IR > 0.5 是较好因子的参考标准"
+      },
+      {
+        "n": "五分组收益分析：按情感得分排序分 5 组",
+        "d": 2,
+        "hint": "各组平均收益，画柱状图看单调性"
+      },
+      {
+        "n": "多空组合超额收益：高情感组 - 低情感组",
+        "d": 2,
+        "hint": "计算多空组合年化超额收益"
+      },
+      {
+        "n": "LM 词典 vs LLM 情感 IC 对比：t 检验显著性",
+        "d": 3,
+        "hint": "scipy.stats.ttest_ind() 或 Mann-Whitney U"
+      },
+      {
+        "n": "样本外初步检验：时间序列分割，前 60% 训练 / 后 40% 测试",
+        "d": 2,
+        "hint": "样本外 IC 与训练期 IC 对比"
+      },
+      {
+        "n": "可选：Graphiti 消融实验（有/无企业历史上下文对比）",
+        "d": 3,
+        "hint": "两组情感得分的 IC 差值"
+      },
+      {
+        "n": "可选：5 分钟事件窗口研究（盘中新闻 15/30/60 分钟反应）",
+        "d": 3,
+        "hint": "需要分钟级行情数据"
+      },
+      {
+        "n": "输出实验结果 Notebook：factor_analysis.ipynb",
+        "d": 1,
+        "hint": "所有图表可复现，含注释"
+      }
+    ]
+  },
+  {
+    "id": "P6",
+    "badge": "P6",
+    "color": "#AFA9EC",
+    "tc": "#26215C",
+    "bar": "#7B6EF6",
+    "name": "日频主回测",
+    "weeks": "第11—12周",
+    "tasks": [
+      {
+        "n": "设计回测引擎接口：输入因子信号，输出每日持仓",
+        "d": 2,
+        "hint": "先画接口文档再写代码"
+      },
+      {
+        "n": "Portfolio 类：持仓、现金、每日净值计算",
+        "d": 2,
+        "hint": "初始资金 100 万，等权分配"
+      },
+      {
+        "n": "交易成本模型：佣金（双边 0.03%）+ 印花税（卖出 0.1%）+ 滑点（0.1%）",
+        "d": 2,
+        "hint": "成本参数写入 config.yaml，论文要引用"
+      },
+      {
+        "n": "A 组：基准策略（等权沪深 300 成分股）",
+        "d": 1,
+        "hint": "无选股信号，每日等权持有 30 只样本股"
+      },
+      {
+        "n": "B 组：纯技术策略（MA 趋势 + 动量因子）",
+        "d": 2,
+        "hint": "20 日均线多头信号，月频调仓"
+      },
+      {
+        "n": "C 组：纯情感策略（LLM 情感得分选股）",
+        "d": 2,
+        "hint": "情感得分 Top N 持有，月频调仓"
+      },
+      {
+        "n": "D 组：技术 + 情感混合策略",
+        "d": 2,
+        "hint": "两个因子标准化后等权合并，月频调仓"
+      },
+      {
+        "n": "绘制四组净值曲线对比图",
+        "d": 1,
+        "hint": "matplotlib，含最大回撤标注"
+      },
+      {
+        "n": "计算四组策略绩效指标：年化收益 / 波动率 / 夏普 / 最大回撤 / Calmar",
+        "d": 1,
+        "hint": "汇总为 DataFrame，打印对比表"
+      },
+      {
+        "n": "样本外 Walk-Forward 检验",
+        "d": 3,
+        "hint": "滑动窗口：训练 12 月 → 测试 3 月"
+      },
+      {
+        "n": "成本敏感性分析：0% / 0.1% / 0.3% 滑点下策略净收益变化",
+        "d": 2,
+        "hint": "画三条净值曲线对比"
+      },
+      {
+        "n": "可选：QuantStats 自动生成 HTML 绩效报告",
+        "d": 1,
+        "hint": "quantstats.reports.html(returns, benchmark)"
+      }
+    ]
+  },
+  {
+    "id": "P7",
+    "badge": "P7",
+    "color": "#F0A88A",
+    "tc": "#4A1B0C",
+    "bar": "#D85A30",
+    "name": "Web 系统集成",
+    "weeks": "第13—14周",
+    "tasks": [
+      {
+        "n": "FastAPI 项目初始化，健康检查路由 /health",
+        "d": 1,
+        "hint": "uvicorn main:app --reload 跑通"
+      },
+      {
+        "n": "因子数据查询 API：GET /api/factors?date=&ticker=",
+        "d": 1,
+        "hint": "从 DuckDB 查情感得分"
+      },
+      {
+        "n": "回测触发 API：POST /api/backtest（异步任务）",
+        "d": 2,
+        "hint": "返回 task_id，前端轮询结果"
+      },
+      {
+        "n": "研报下载 API：GET /api/reports/{id}/pdf",
+        "d": 1,
+        "hint": "返回 FileResponse"
+      },
+      {
+        "n": "Vue3 项目初始化（Vite + Element Plus + ECharts）",
+        "d": 2,
+        "hint": "npm create vue@latest"
+      },
+      {
+        "n": "页面 1：数据中心（新闻采集状态 + 数据质量指标）",
+        "d": 2,
+        "hint": "表格展示最新 100 条新闻 + 实体关联覆盖率"
+      },
+      {
+        "n": "页面 2：因子研究（IC 趋势图 + 分组收益图）",
+        "d": 2,
+        "hint": "ECharts 折线图 + 柱状图"
+      },
+      {
+        "n": "页面 3：策略回测（净值曲线 + 绩效指标表）",
+        "d": 2,
+        "hint": "ECharts 折线图 + Element Table"
+      },
+      {
+        "n": "页面 4：报告中心（Markdown 预览 + PDF 下载）",
+        "d": 2,
+        "hint": "marked.js 渲染 Markdown"
+      },
+      {
+        "n": "前后端联调：CORS 配置，接口对接",
+        "d": 2,
+        "hint": "跑通 4 个页面的数据流"
+      },
+      {
+        "n": "可选：Neo4j 企业关系图（neovis.js 可视化）",
+        "d": 3,
+        "hint": "若 Graphiti 已接入再做"
+      }
+    ]
+  },
+  {
+    "id": "P8",
+    "badge": "P8",
+    "color": "#C8C6BE",
+    "tc": "#2C2C2A",
+    "bar": "#88867E",
+    "name": "收尾 & 论文",
+    "weeks": "第15—16周",
+    "tasks": [
+      {
+        "n": "snapshot_v2 数据冻结：所有正式实验数据备份",
+        "d": 1,
+        "hint": "论文图表只读 v2，不依赖实时数据"
+      },
+      {
+        "n": "pytest 完整测试套件运行，确认全部通过",
+        "d": 1,
+        "hint": "数据质量 + 时间对齐 + 因子 + 回测核心"
+      },
+      {
+        "n": "论文所有图表高分辨率重新导出（300 DPI）",
+        "d": 1,
+        "hint": "IC 衰减图 / 分组收益图 / 净值曲线图"
+      },
+      {
+        "n": "行业周报正式版生成（至少 1 份完整 PDF）",
+        "d": 2,
+        "hint": "内容真实，图表齐全"
+      },
+      {
+        "n": "局限性章节起草（样本量/时间跨度/LLM幻觉/成本假设）",
+        "d": 2,
+        "hint": "诚实写，老师反而认可"
+      },
+      {
+        "n": "离线 Demo 录制：系统演示视频（3—5 分钟）",
+        "d": 1,
+        "hint": "防止答辩时网络或 API 故障"
+      },
+      {
+        "n": "论文初稿：引言→文献→系统设计→实验→结论",
+        "d": 3,
+        "hint": "最费时的部分，尽早开始"
+      },
+      {
+        "n": "准备答辩 PPT：背景→架构→实验→结论→局限性",
+        "d": 2,
+        "hint": "15 分钟内讲完，图多字少"
+      },
+      {
+        "n": "准备 6 个高频答辩问题的标准回答",
+        "d": 2,
+        "hint": "参考实施路线文档第五章"
+      },
+      {
+        "n": "GitHub 整理：README + 安装文档 + version-lock.md 公开",
+        "d": 1,
+        "hint": "让答辩委员能看到规范的代码仓库"
+      }
+    ]
+  }
+]
