@@ -2,7 +2,7 @@
 
 一款面向阶段型目标的个人项目与日程管理工具。它把“目标、截止日期、每周可用时间”整理为可审核的阶段计划，并支持 Android、Windows 和网页端同步执行。
 
-当前版本：**0.5.5**
+当前版本：**0.5.6**
 
 ## 核心能力
 
@@ -75,7 +75,7 @@ Copy-Item server\config.example.json server\config.local.json
 
 `config.local.json` 已被 Git 忽略，禁止提交。客户端“设置 → AI 规划服务”可直接使用同步服务器并测试 `/health` 连通性和服务端模型配置；保存根地址时会自动补全 `/api/plan`。
 
-也可在“设置 → AI 规划服务 → 个人接口”填写 OpenAI Chat Completions 兼容 API 地址、模型名称和 API Key。API Key 仅安全保存在当前设备，不会进入备份或跨端同步数据。网页端要求该 API 允许浏览器跨域访问；Windows、Android 和服务端 AI 不受此限制。AI 导入仅上传用户当前输入的材料或目标，不会上传完整本地工作空间。
+也可在“设置 → AI 规划服务 → 个人接口”选择 OpenAI、DeepSeek、通义千问、Kimi、智谱、SiliconFlow 等预设，或填写自定义 OpenAI Chat Completions 兼容 API 地址。填入 API Key 后点“获取模型”会读取接口的 `/models` 清单，也可手动填写模型名称。API Key 仅安全保存在当前设备，不会进入备份或跨端同步数据。网页端要求该 API 允许浏览器跨域访问；Windows、Android 和服务端 AI 不受此限制。AI 导入仅上传用户当前输入的材料或目标，不会上传完整本地工作空间。
 
 ## 邮箱验证码
 

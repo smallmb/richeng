@@ -12,6 +12,10 @@ void main() {
       'https://example.com/v1/chat/completions',
     );
     expect(normalizeOpenAiEndpoint('ftp://example.com'), isNull);
+    expect(
+      modelsEndpoint('https://example.com/v1/chat/completions').toString(),
+      'https://example.com/v1/models',
+    );
   });
 
   test('模型计划 JSON 会补齐任务字段', () {

@@ -8,6 +8,42 @@ import 'models.dart';
 
 enum AiMode { server, personal }
 
+// 常见服务商都使用 OpenAI Chat Completions 兼容协议，可一键填入地址和常用模型。
+class AiProviderPreset {
+  final String name;
+  final String endpoint;
+  final List<String> models;
+  const AiProviderPreset(this.name, this.endpoint, this.models);
+}
+
+const aiProviderPresets = [
+  AiProviderPreset('OpenAI', 'https://api.openai.com/v1', [
+    'gpt-4o-mini',
+    'gpt-4o',
+  ]),
+  AiProviderPreset('DeepSeek', 'https://api.deepseek.com/v1', [
+    'deepseek-chat',
+    'deepseek-reasoner',
+  ]),
+  AiProviderPreset(
+    '通义千问',
+    'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    ['qwen-plus', 'qwen-turbo'],
+  ),
+  AiProviderPreset('Kimi', 'https://api.moonshot.cn/v1', [
+    'moonshot-v1-8k',
+    'moonshot-v1-32k',
+  ]),
+  AiProviderPreset('智谱', 'https://open.bigmodel.cn/api/paas/v4', [
+    'glm-4-flash',
+    'glm-4-plus',
+  ]),
+  AiProviderPreset('SiliconFlow', 'https://api.siliconflow.cn/v1', [
+    'deepseek-ai/DeepSeek-V3',
+    'Qwen/Qwen2.5-7B-Instruct',
+  ]),
+];
+
 // API Key 单独保存，不进入工作空间、JSON 备份或跨端同步数据。
 class AiConfiguration {
   static const _keyName = 'richeng.ai.personal.key';
@@ -94,6 +130,43 @@ Uri modelsEndpoint(String chatEndpoint) {
       ? uri.path.substring(0, uri.path.length - suffix.length)
       : uri.path;
   return uri.replace(path: '${path.isEmpty ? '' : path}/models');
+}
+
+// /v1/models 是 OpenAI 兼容接口的标准模型清单；只保留可作为模型 ID 的字符串。
+Future<List<String>> fetchPersonalModels({
+  required String endpoint,
+  required String apiKey,
+}) async {
+  final response = await http
+      .get(
+        modelsEndpoint(endpoint),
+        headers: {'Authorization': 'Bearer $apiKey'},
+      )
+      .timeout(const Duration(seconds: 15));
+  Map<String, dynamic> body;
+  try {
+    body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+  } catch (_) {
+    throw Exception('接口未返回模型列表 JSON');
+  }
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    final apiError = body['error'];
+    final message = apiError is Map ? apiError['message'] : apiError;
+    throw Exception(message ?? '获取模型失败：${response.statusCode}');
+  }
+  final data = body['data'];
+  if (data is! List) throw Exception('接口未返回模型列表');
+  final models =
+      data
+          .whereType<Map>()
+          .map((item) => item['id'])
+          .whereType<String>()
+          .where((id) => id.trim().isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+  if (models.isEmpty) throw Exception('接口未返回可用模型');
+  return models;
 }
 
 String _prompt({

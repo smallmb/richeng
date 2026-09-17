@@ -2485,6 +2485,9 @@ class _WorkspaceState extends State<Workspace> {
     final apiKey = TextEditingController();
     var selectedMode = configuration.mode;
     var checking = false;
+    var fetchingModels = false;
+    AiProviderPreset? selectedPreset;
+    var detectedModels = <String>[];
     String? status;
     await showDialog<void>(
       context: context,
@@ -2549,22 +2552,52 @@ class _WorkspaceState extends State<Workspace> {
                     style: TextStyle(fontSize: 13, color: secondary),
                   ),
                   const SizedBox(height: 12),
+                  const Text(
+                    '服务商预设',
+                    style: TextStyle(fontSize: 12, color: secondary),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final preset in aiProviderPresets)
+                        ChoiceChip(
+                          label: Text(preset.name),
+                          selected: selectedPreset == preset,
+                          onSelected: checking || fetchingModels
+                              ? null
+                              : (_) => update(() {
+                                  selectedPreset = preset;
+                                  baseUrl.text = preset.endpoint;
+                                  if (model.text.trim().isEmpty) {
+                                    model.text = preset.models.first;
+                                  }
+                                  detectedModels = preset.models;
+                                  status = null;
+                                }),
+                        ),
+                      ChoiceChip(
+                        label: const Text('自定义'),
+                        selected: selectedPreset == null,
+                        onSelected: checking || fetchingModels
+                            ? null
+                            : (_) => update(() {
+                                selectedPreset = null;
+                                detectedModels = [];
+                              }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: baseUrl,
                     keyboardType: TextInputType.url,
                     autocorrect: false,
+                    onChanged: (_) => selectedPreset = null,
                     decoration: const InputDecoration(
                       labelText: 'API 地址',
                       hintText: 'https://api.openai.com/v1',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: model,
-                    autocorrect: false,
-                    decoration: const InputDecoration(
-                      labelText: '模型名称',
-                      hintText: '例如 gpt-4o-mini',
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -2579,6 +2612,111 @@ class _WorkspaceState extends State<Workspace> {
                           : '请输入 API Key',
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: checking || fetchingModels
+                            ? null
+                            : () async {
+                                final endpoint = normalizeOpenAiEndpoint(
+                                  baseUrl.text,
+                                );
+                                final key = apiKey.text.trim().isNotEmpty
+                                    ? apiKey.text.trim()
+                                    : await AiConfiguration.readApiKey();
+                                if (endpoint == null ||
+                                    key == null ||
+                                    key.isEmpty) {
+                                  update(
+                                    () => status = '请先填写 API 地址和 API Key。',
+                                  );
+                                  return;
+                                }
+                                update(() {
+                                  fetchingModels = true;
+                                  status = null;
+                                });
+                                try {
+                                  final models = await fetchPersonalModels(
+                                    endpoint: endpoint,
+                                    apiKey: key,
+                                  );
+                                  if (!ctx.mounted) return;
+                                  update(() {
+                                    detectedModels = models;
+                                    if (!models.contains(model.text.trim())) {
+                                      model.text = models.first;
+                                    }
+                                    status =
+                                        '已识别 ${models.length} 个模型，请选择或手动填写。';
+                                  });
+                                } catch (exception) {
+                                  if (ctx.mounted) {
+                                    update(
+                                      () => status =
+                                          '获取模型失败：${exception.toString().replaceFirst('Exception: ', '')}',
+                                    );
+                                  }
+                                } finally {
+                                  if (ctx.mounted) {
+                                    update(() => fetchingModels = false);
+                                  }
+                                }
+                              },
+                        icon: const Icon(
+                          Icons.cloud_download_outlined,
+                          size: 16,
+                        ),
+                        label: Text(fetchingModels ? '获取中…' : '获取模型'),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          '地址与 Key 可用后读取 /models。',
+                          style: TextStyle(fontSize: 12, color: secondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: model,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: '模型名称',
+                      hintText: '例如 gpt-4o-mini',
+                    ),
+                  ),
+                  if (detectedModels.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      '可用模型',
+                      style: TextStyle(fontSize: 12, color: secondary),
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 74,
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final availableModel in detectedModels)
+                              ChoiceChip(
+                                label: Text(availableModel),
+                                selected: model.text.trim() == availableModel,
+                                onSelected: checking || fetchingModels
+                                    ? null
+                                    : (_) => update(
+                                        () => model.text = availableModel,
+                                      ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   const Text(
                     '网页端还要求接口允许浏览器跨域访问；若被拦截，请使用 Windows、Android 或服务端 AI。',
