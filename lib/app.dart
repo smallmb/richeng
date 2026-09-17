@@ -762,6 +762,11 @@ class _WorkspaceState extends State<Workspace> {
             '我的项目',
             '把长远目标，拆成眼前的一小步。',
             actions: [
+              OutlinedButton.icon(
+                onPressed: importPlan,
+                icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                label: const Text('AI / 清单导入'),
+              ),
               FilledButton.icon(
                 onPressed: () => editProject(),
                 icon: const Icon(Icons.add, size: 18),
@@ -2346,8 +2351,10 @@ class _WorkspaceState extends State<Workspace> {
                               context: context,
                               builder: (confirmCtx) => AlertDialog(
                                 title: const Text('导入内容已修改'),
-                                content: const Text(
-                                  '撤销会删除这一批导入的阶段和任务，其中部分内容已被编辑。仍要撤销吗？',
+                                content: Text(
+                                  batch.createdProject
+                                      ? '撤销后项目会保留完整导入内容，但会移入“已归档”。其中部分内容已被编辑。仍要撤销吗？'
+                                      : '撤销会删除这一批导入的阶段和任务，其中部分内容已被编辑。仍要撤销吗？',
                                 ),
                                 actions: [
                                   TextButton(
@@ -2368,6 +2375,15 @@ class _WorkspaceState extends State<Workspace> {
                       if (confirmed && store.undoImportBatch(batch)) {
                         save();
                         update(() {});
+                        final archivedTitle =
+                            store.lastUndoArchivedProjectTitle;
+                        if (archivedTitle != null) {
+                          setState(() {
+                            selected = null;
+                            showArchived = true;
+                          });
+                          toast('已撤销导入，项目「$archivedTitle」已移入已归档。');
+                        }
                       }
                     },
                     child: const Text('撤销导入'),
@@ -3390,9 +3406,24 @@ class _WorkspaceState extends State<Workspace> {
                             action: SnackBarAction(
                               label: '撤销',
                               onPressed: () {
-                                store.undoImportBatch(batch);
-                                if (createdProject) selected = null;
-                                save();
+                                if (store.undoImportBatch(batch)) {
+                                  final archivedTitle =
+                                      store.lastUndoArchivedProjectTitle;
+                                  if (createdProject) {
+                                    selected = null;
+                                    showArchived = true;
+                                  }
+                                  save();
+                                  if (archivedTitle != null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '已撤销导入，项目「$archivedTitle」已移入已归档。',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
                               },
                             ),
                           ),

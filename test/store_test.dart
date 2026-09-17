@@ -64,4 +64,27 @@ void main() {
     expect(afterRestart.imports, isEmpty);
     expect(batch.id, isNotEmpty);
   });
+
+  test('撤销新建导入项目会保留内容并移入归档', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final imported = Phase(
+      title: 'AI 导入',
+      tasks: [PlanTask(title: '整理资料')],
+    );
+    final project = Project(title: '导入计划', phases: [imported]);
+    final store = PlanStore(preferences, [project]);
+    final batch = store.recordImport(
+      project,
+      [imported],
+      createdProject: true,
+      sourceLabel: 'AI 材料分析',
+    );
+
+    expect(store.undoImportBatch(batch), isTrue);
+    expect(store.projects.single.archived, isTrue);
+    expect(store.projects.single.tasks, hasLength(1));
+    expect(store.lastUndoArchivedProjectTitle, '导入计划');
+    expect(store.imports, isEmpty);
+  });
 }

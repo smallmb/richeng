@@ -93,6 +93,8 @@ class PlanStore extends ChangeNotifier {
   List<Project> projects;
   List<TrashedTask> trash;
   List<ImportBatch> imports;
+  // 仅供界面在撤销后提示；归档状态本身会随项目数据持久保存。
+  String? lastUndoArchivedProjectTitle;
   String? error;
   Future<void> _pending = Future.value();
   PlanStore(
@@ -295,12 +297,15 @@ class PlanStore extends ChangeNotifier {
   }
 
   bool undoImportBatch(ImportBatch batch) {
+    lastUndoArchivedProjectTitle = null;
     final project = projects
         .where((item) => item.id == batch.projectId)
         .firstOrNull;
     if (project == null) return false;
     if (batch.createdProject) {
-      projects.remove(project);
+      // 新建导入项目保留完整内容并移入归档，用户仍可查看或手动恢复。
+      project.archived = true;
+      lastUndoArchivedProjectTitle = project.title;
     } else {
       final phaseIds = batch.phaseSnapshots.map((item) => item['id']).toSet();
       project.phases.removeWhere((phase) => phaseIds.contains(phase.id));
