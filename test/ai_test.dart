@@ -30,4 +30,11 @@ void main() {
     expect(phases.single.tasks.single.status, 'todo');
     expect(phases.single.tasks.single.aiSuggested, isTrue);
   });
+
+  test('模型可返回面向用户的处理摘要', () {
+    expect(
+      planSummary('{"summary":["识别了目标","拆分了任务"],"phases":[]}'),
+      '识别了目标\n拆分了任务',
+    );
+  });
 }

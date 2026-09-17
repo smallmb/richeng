@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,6 +58,59 @@ Uri aiHealthUri(String endpoint) {
 // 窄屏上不超出可用宽度，避免 390px 手机上弹窗溢出。
 double dialogWidth(BuildContext context, [double desktop = 460]) =>
     MediaQuery.sizeOf(context).width.clamp(320, desktop).toDouble();
+
+// 六点环形动效用于等待模型响应；每个点按顺序呼吸，避免长请求看起来像卡死。
+class SixDotThinkingIndicator extends StatefulWidget {
+  const SixDotThinkingIndicator({super.key});
+
+  @override
+  State<SixDotThinkingIndicator> createState() =>
+      _SixDotThinkingIndicatorState();
+}
+
+class _SixDotThinkingIndicatorState extends State<SixDotThinkingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 40,
+    height: 40,
+    child: AnimatedBuilder(
+      animation: controller,
+      builder: (_, _) => Stack(
+        alignment: Alignment.center,
+        children: List.generate(6, (index) {
+          final phase = (controller.value - index / 6 + 1) % 1;
+          final opacity = 0.25 + 0.75 * math.pow(1 - phase, 2);
+          final angle = index * math.pi / 3 - math.pi / 2;
+          return Transform.translate(
+            offset: Offset(math.cos(angle) * 13, math.sin(angle) * 13),
+            child: Opacity(
+              opacity: opacity.toDouble(),
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+                child: SizedBox(width: 7, height: 7),
+              ),
+            ),
+          );
+        }),
+      ),
+    ),
+  );
+}
 
 enum AppearanceMode { light, dark, automatic }
 
@@ -2940,6 +2994,8 @@ class _WorkspaceState extends State<Workspace> {
     List<Phase>? preview;
     String? error;
     bool busy = false, append = project != null;
+    String thinkingStatus = '';
+    String providerThinking = '';
     bool goalMode = false;
     String? goalDeadline;
     var weeklyHours = 6;
@@ -3181,9 +3237,46 @@ class _WorkspaceState extends State<Workspace> {
                   ),
                 ],
                 if (busy)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: LinearProgressIndicator(),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SixDotThinkingIndicator(),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '正在思考',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  providerThinking.isNotEmpty
+                                      ? providerThinking
+                                      : thinkingStatus,
+                                  maxLines: 4,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: secondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 if (error != null)
                   Padding(
@@ -3343,11 +3436,30 @@ class _WorkspaceState extends State<Workspace> {
                       update(() {
                         busy = true;
                         error = null;
+                        thinkingStatus = '正在整理输入内容…';
+                        providerThinking = '';
                       });
+                      final stages = [
+                        '正在理解目标与约束…',
+                        '正在拆分阶段与任务…',
+                        '正在校验日期和优先级…',
+                      ];
+                      var stageIndex = 0;
+                      final stageTimer = Timer.periodic(
+                        const Duration(seconds: 2),
+                        (_) {
+                          if (ctx.mounted) {
+                            update(
+                              () => thinkingStatus =
+                                  stages[stageIndex++ % stages.length],
+                            );
+                          }
+                        },
+                      );
                       try {
                         late final List<Phase> phases;
                         if (aiConfiguration.mode == AiMode.personal) {
-                          phases = await requestPersonalPlan(
+                          final result = await requestPersonalPlan(
                             endpoint: personalEndpoint!,
                             apiKey: personalKey!,
                             model: aiConfiguration.model,
@@ -3356,7 +3468,16 @@ class _WorkspaceState extends State<Workspace> {
                             today: dateKey(DateTime.now()),
                             deadline: goalMode ? goalDeadline : null,
                             weeklyHours: goalMode ? weeklyHours : null,
+                            onThinking: (value) {
+                              if (ctx.mounted && value.isNotEmpty) {
+                                update(() => providerThinking = value);
+                              }
+                            },
                           );
+                          phases = result.phases;
+                          if (result.thinking.isNotEmpty && ctx.mounted) {
+                            update(() => providerThinking = result.thinking);
+                          }
                         } else {
                           final endpoint = aiConfiguration.serverEndpoint;
                           final response = await http
@@ -3418,6 +3539,7 @@ class _WorkspaceState extends State<Workspace> {
                           update(() => error = '分析失败：$message。原始材料已保留。');
                         }
                       } finally {
+                        stageTimer.cancel();
                         if (ctx.mounted) update(() => busy = false);
                       }
                     },
