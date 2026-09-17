@@ -1,136 +1,151 @@
-# 日程 0.3.0
+# 日程 Richeng
 
-沿用原 HTML 的暖灰背景、白色描边卡片、分阶段清单和难度标签，提供 Flutter 桌面与手机布局。
+一款面向阶段型目标的个人项目与日程管理工具。它把“目标、截止日期、每周可用时间”整理为可审核的阶段计划，并支持 Android、Windows 和网页端同步执行。
 
-## 0.1.1 动效优化
+当前版本：**0.5.4**
 
-- 参考 [MotionView](https://feralui.dev/motionview) 的缓动节奏，以 Flutter 原生组件实现，无新增依赖。
-- 勾选完成时提供轻微缩放、文字淡化和删除线；筛选列表先保留完成反馈，再平滑收起，支持立即撤回。
-- 阶段展开统一高度、透明度和箭头旋转，支持动画中途反向操作；进度条平滑更新。
-- 任务详情在桌面使用右侧抽屉，在手机使用底部面板；标题与操作栏固定，内容可滚动并适应键盘。
-- 遵循系统“减少动画”设置，改善状态文字对比度，修复桌面侧栏 Material 背景问题。
-- 验证：8 项 Flutter 测试通过，静态分析无问题，Windows、Android ARM64 和网页构建成功。移动端布局另经 390px 浏览器预览检查；尚未进行 Android 真机动效验证。
+## 核心能力
 
-## 0.2.0 日程与账号完善
+- **项目与任务**：多项目、阶段、独立任务箱、归档、搜索、难度、任务状态、进度记录、回收站与恢复。
+- **日程执行**：任务可设置多个执行日期、每个日期独立开始时间、预计时长、截止日期和提醒提前量。
+- **今日页**：按开始时间展示时间轴；无时间任务显示为“全天”；逾期任务可勾选多项并批量重新安排，同时保留开始时间和截止日期。
+- **提醒**：Android 本地通知会按每个执行日期及对应时间登记；可在设置中发送测试通知。
+- **AI / 清单导入**：支持 Markdown 或纯文本清单整理，也支持“目标 + 截止日期 + 每周可用时间”生成计划。预览会标注原文提取、AI 建议和待确认日期。
+- **导入历史**：每批导入持久保存，可撤销；批次内容已被人工修改时会先提示。同名任务不会被删除，只会提示并保留。
+- **账号与同步**：邮箱注册登录、验证码注册、设备列表与移除、WebSocket 实时同步、HTTP 轮询兜底、三方字段合并和冲突提示。
+- **本地可靠性**：自动保存、完整 JSON 备份、同步前备份、导入撤销和回收站都可在重启后继续使用。
+- **外观**：浅色、深色、按当地时间自动切换；深色模式下“今天”显示黄色月亮图标。
 
-- 任务可设置开始时间、预计耗时与提前提醒；Android 使用系统本地通知，提醒设置、变更、完成和归档后会重新安排。
-- “今天”和日历继续按日期查看，任务行会展示时间、预计耗时与提醒状态；项目可填写开始日和目标截止日。
-- 快速添加直接进入“独立任务”箱，不必先建立项目；阶段和任务均可上下排序。
-- AI/清单追加导入会跳过同项目内同标题的重复任务；撤销新项目导入会完整移除该项目。
-- 同步服务记录登录设备，可查看并移除其他设备的会话；原有数据库启动时自动迁移设备字段。
-- 验证：10 项 Flutter 测试、4 项 Python 服务测试通过；网页、Windows 和 Android ARM64 构建通过。
+## 体验与运行
 
-## 0.2.1 多日执行
-
-- 同一任务可增加多个执行日期，日历会在每个日期显示该任务；完成状态、备注和任务数量仍只计算一次。
-- Android 会为每个未来执行日期创建对应提醒；旧版本只有一个安排日期的任务会自动迁移为单日执行。
-
-## 0.3.0 公网服务准备
-
-- 服务端新增 SMTP 邮箱验证码：验证码仅以摘要保存，10 分钟过期、错误最多 5 次、发送间隔 60 秒；生产配置可强制注册必须验证。
-- 新增 Docker Compose 与 Caddy 部署文件，可使用域名自动申请 HTTPS；AI 密钥和 SMTP 凭据只通过服务器环境变量读取。
-- 已在 USB 连接的 OPD2601 平板安装并启动调试版，使用 ADB 反向端口映射验证平板到本机服务的 TCP 连通性。
-
-## 直接体验
-
-- 双击根目录的「打开日程.cmd」，或运行 `build/windows/x64/runner/Release/richeng.exe`。
-- Windows 发布时必须保留 Release 目录内的 DLL 和 data 文件夹，不能只复制 exe。
-- Android 安装包位于 `build/app/outputs/flutter-apk/`；当前是体验签名，不能直接作为商店正式发布包。
-- 首次打开载入原 HTML 的 9 个阶段、104 项任务。原浏览器已勾选状态不在 HTML 文件中，因此不会自动迁移。
-
-## 已实现
-
-- 多项目、归档与恢复，项目开始日和目标截止日；阶段新增、编辑、上下排序；空阶段可删除。
-- 独立任务箱、任务新增、编辑、移动阶段、上下排序、删除及即时撤销；未开始、进行中、已完成状态。
-- 难度、进度备注、安排日期与开始时间、预计耗时、截止日期；完成数量与阶段进度自动汇总。
-- Android 本地提醒，支持开始时、提前 5/15/30/60 分钟提醒；权限只在用户开启提醒时请求。
-- 今日安排、逾期待办、未安排任务、月历日期查看。
-- 搜索以及全部、未完成、已完成、逾期筛选。
-- 本地保存与重启恢复，完整 JSON 备份与追加恢复。
-- 文本/Markdown 清单整理、标题编辑、选择性导入、新建项目或追加阶段。
-- OpenAI 兼容模型服务：分析 → 校验 → 预览 → 用户确认导入。
-- 邮箱验证码注册（生产配置启用）、邮箱和密码登录、登录设备查看与移除、WebSocket 实时同步、断线后的 8 秒 HTTP 轮询兜底、版本冲突阻止覆盖。
-
-## 本地服务
-
-Python 3.10 及以上，无额外 Python 包依赖。
+### Flutter 客户端
 
 ```powershell
-# 在项目目录启动服务，默认仅监听本机。
-python server/server.py
+# 获取依赖并运行网页调试版
+& 'D:\Apps\flutter\bin\flutter.bat' pub get
+& 'D:\Apps\flutter\bin\flutter.bat' run -d chrome
+
+# Android ARM64 发布包
+& 'D:\Apps\flutter\bin\flutter.bat' build apk --release --target-platform android-arm64
+
+# 网页发布包
+& 'D:\Apps\flutter\bin\flutter.bat' build web --release
 ```
 
-客户端「设置 → 账号与云同步」中填写 `http://127.0.0.1:5318`，注册一个至少 10 位密码的账号。
-
-首次登录选择同步方向：
-
-1. 第一台设备选择「使用当前设备版本」。
-2. 第二台设备连接同一服务和账号，选择「使用云端版本」。
-3. 后续自动同步。并发修改时暂停同步，选择保留版本；被替换版本可在设置中复制备份恢复。
-
-同步采用整个工作空间的版本检查，不是字段级自动合并。首次方向选择以及冲突解决会有确认提示。登录令牌仅保存在内存，本次关闭程序后需要重新登录；密码不会保存在客户端。
-
-账号数据存放在 `server/data.sqlite3`。本地开发默认不强制邮箱验证码；公开部署应设置 `EMAIL_VERIFICATION_REQUIRED=1` 并配置 SMTP。找回密码、配额与运维监控待后续补齐。
-
-手机连接时，`127.0.0.1` 指手机自身；应使用部署后的 HTTPS 地址，或在可信局域网使用电脑地址。调试 APK 允许 HTTP；正式版本保持 HTTPS。服务监听地址可通过 `RICHENG_HOST` 配置，默认不向局域网开放。
-
-## 接入 AI
-
-复制 `server/config.example.json` 为 `server/config.local.json`，填写：
-
-- `AI_BASE_URL`：OpenAI 兼容接口根地址，通常以 `/v1` 结尾。服务会追加 `/chat/completions`，不要重复填写这个后缀。
-- `AI_MODEL`：供应商支持的模型名称。
-- `AI_API_KEY`：模型密钥，只填写到本机文件。该文件已被 Git 忽略。
-
-重启 Python 服务。客户端登录后，AI 导入默认使用当前账号服务的 `/api/plan`，无需另外填写 AI 地址。仅发送本次粘贴的材料，未输入具体日期时要求模型保留空日期。
-
-尚未提供真实密钥，因此当前未完成真实模型调用验证。AI 未配置时会返回明确错误，本地清单整理不受影响。自定义 AI 服务地址须实现相同协议；只有同源请求才携带账号令牌。
-
-## 邮箱验证码与 HTTPS 部署
-
-生产部署模板位于 [`deploy/`](deploy/README.md)。复制 `deploy/.env.example` 为私有的 `deploy/.env`，填写公网 API 域名、OpenAI 兼容模型密钥和 SMTP 凭据，再在该目录执行 `docker compose up -d --build`。域名 DNS 指向服务器且开放 80/443 后，Caddy 会自动申请 HTTPS 证书。
-
-客户端注册账号时先点击“发送验证码”，再填写六位验证码。开发环境可保持 `EMAIL_VERIFICATION_REQUIRED=0`；生产环境应使用 `EMAIL_MODE=smtp` 与 `EMAIL_VERIFICATION_REQUIRED=1`。
-
-## 构建与测试
+Windows 本地构建可使用：
 
 ```powershell
-# Windows：脚本自动准备插件目录联接。
 .\tool\build-windows.ps1
+```
 
-# Android 体验包。
-& 'D:\Apps\flutter\bin\flutter.bat' build apk --debug
+Windows 打包依赖 Visual Studio 的 C++ 桌面开发组件；若缺少 ATL 等组件，请先按 Flutter Windows 构建要求补齐 Visual Studio 工作负载。
 
-# 浏览器预览，渲染资源随包提供。
-& 'D:\Apps\flutter\bin\flutter.bat' build web --no-web-resources-cdn
-python -m http.server 5317 --bind 127.0.0.1 --directory build/web
+### 本地服务
 
-# 静态分析与自动测试；同步测试会启动临时 Python 服务和临时数据库。
+服务端需要 Python 3.9+。首次启动会安装 `websockets` 依赖：
+
+```powershell
+python -m pip install -r server\requirements.txt
+python server\server.py
+```
+
+默认 HTTP API 是 `http://127.0.0.1:5318`，实时同步 WebSocket 是 `ws://127.0.0.1:5319/ws`。客户端在“设置 → 账号与云同步”中填写 HTTP 服务根地址。
+
+首次同步时：
+
+1. 第一台设备登录后选择“使用当前设备版本”。
+2. 其他设备使用同一邮箱登录，选择“使用云端版本”。
+3. 后续编辑会先本地保存，再通过 WebSocket 通知和 HTTP 同步。
+
+登录令牌与同步基线会保存在当前设备；登录成功后即使尚未选择首次同步方向，关闭应用后也可恢复该账号。服务端会话有效期为 30 天。主动退出账号会清除本机令牌，但保留上次邮箱与服务地址供下次填写。
+
+## AI 服务配置
+
+复制配置模板：
+
+```powershell
+Copy-Item server\config.example.json server\config.local.json
+```
+
+在 `server/config.local.json` 填写以下字段：
+
+- `AI_BASE_URL`：OpenAI 兼容接口根地址，通常以 `/v1` 结尾。
+- `AI_MODEL`：模型名称。
+- `AI_API_KEY`：模型密钥。
+
+`config.local.json` 已被 Git 忽略，禁止提交。客户端“设置 → AI 服务地址”可直接使用同步服务器并测试 `/health` 连通性和服务端模型配置；保存根地址时会自动补全 `/api/plan`。
+
+模型密钥只保存在服务端。AI 导入仅上传用户当前输入的材料或目标，不会上传完整本地工作空间。
+
+## 邮箱验证码
+
+开发环境默认可不强制验证码。生产环境建议在私有配置中设置：
+
+```text
+EMAIL_MODE=smtp
+EMAIL_VERIFICATION_REQUIRED=1
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+SMTP_FROM=...
+```
+
+支持 QQ、163、Gmail、Outlook、企业邮箱等符合标准格式的邮箱地址。发信能力取决于已配置 SMTP 服务是否允许向对应收件人投递。
+
+## Windows Server 部署
+
+Windows 原生部署说明在 [deploy/README.md](deploy/README.md)。常用部署结构：
+
+```text
+C:\richeng\server\server.py
+C:\richeng\server\requirements.txt
+C:\richeng\deploy\windows-start.ps1
+C:\richeng\deploy\Caddyfile.windows
+C:\richeng\web\                 # Flutter build web 的输出
+```
+
+私有配置和数据不得覆盖或上传：
+
+- `server/config.local.json`
+- `server/data.sqlite3`
+- `deploy/.env`
+- `deploy/runtime/`
+
+使用公网 IP 时，可基于 `deploy/Caddyfile.windows.public-ip` 配置网页、`/api/*` 与 `/ws` 转发。更新网页端时仅需覆盖 `C:\richeng\web`；更新服务端代码或 Caddy 配置后再运行：
+
+```powershell
+Set-Location C:\richeng\deploy
+.\windows-start.ps1
+```
+
+该脚本会停止本项目已记录的 API 与 Caddy 进程、安装 WebSocket 依赖、重新启动服务并写入 `deploy/runtime` 日志。公网部署应只开放 80 和 443，不公开 5318、5319。
+
+## 验证
+
+```powershell
 & 'D:\Apps\flutter\bin\flutter.bat' analyze
 & 'D:\Apps\flutter\bin\flutter.bat' test
-python -m unittest discover -s server -p test_server.py -v
+python server\test_server.py
 ```
 
-Android Kotlin 增量缓存遇到 C、D 盘相对路径冲突，因此在本项目内关闭了 Kotlin 增量编译。没有修改 Flutter SDK 或系统安全设置。
+Flutter 测试涵盖本地持久化、回收站、导入批次、时间轴排序、批量重排、深色模式、提醒规则及双端同步。服务端测试覆盖账号隔离、同步版本冲突、设备移除、邮箱验证码和常见邮箱格式。
 
-已生成 Android、Windows、iOS、macOS 工程。iOS/macOS 需要在 Mac 上使用 Xcode 构建、签名和实机验证，当前 Windows 环境没有产出这两个平台的安装包。
+## 当前限制
 
-## 初版边界
+- 暂不支持循环任务、系统日历双向同步、PDF/Word/图片导入、团队协作、找回密码、后台推送。
+- 项目进度目前按已完成任务数计算，不按预计工时加权。
+- 本地数据使用 SharedPreferences；加密本地数据库和大规模数据迁移尚未实现。
+- Android 已支持本地提醒；Windows 原生提醒和正式 MSIX 分发仍待完善。
+- iOS/macOS 工程已生成，但需要 macOS 与 Xcode 才能构建、签名和验证。
 
-- 一个任务支持多个执行日期，但各日期暂共用一个开始时间、预计耗时和提醒规则；暂不含多时段、循环任务和系统日历同步。
-- 导入支持粘贴文本；PDF、Word、图片和直接文件选择尚未实现。
-- 项目进度按已完成任务数量计算，不代表工时完成比例。
-- 尚无团队协作、找回密码、后台推送与实际云服务器账号。Windows 未打包为 MSIX，因此系统级定时提醒暂只在 Android 启用。
-- JSON 备份恢复会追加新 ID 的项目，不覆盖已有项目。
-- 本地数据使用 SharedPreferences；大规模数据、加密本地存储与增量同步待后续版本。
+## 目录说明
 
-## 工程结构
-
-- `lib/app.dart`：主题、页面、任务编辑及导入预览。
-- `lib/motion.dart`：动效曲线、勾选反馈、阶段展开、任务退场与响应式详情面板。
-- `lib/models.dart`：稳定标识、数据模型、输入校验、Markdown 清单解析。
-- `lib/store.dart`：本地持久化与串行写入。
-- `lib/cloud.dart`：账号界面、同步状态、版本冲突与恢复备份。
-- `server/server.py`：账号、SQLite、同步 API、模型代理。
-- `assets/seed.json`：从原 HTML 提取的完整初始清单。
-- `test/`、`server/test_server.py`：组件、持久化、解析、账号隔离及真实双端同步测试。
+- `lib/app.dart`：页面、主题、任务编辑、时间轴、导入预览与设置。
+- `lib/models.dart`：项目、任务、日期校验、清单解析和批量重排规则。
+- `lib/store.dart`：本地保存、回收站和导入历史。
+- `lib/cloud.dart`：账号、设备、会话恢复、实时同步和三方合并。
+- `lib/reminders.dart`：Android 本地提醒。
+- `server/server.py`：SQLite、账号、同步 API、WebSocket、邮件验证码和 AI 代理。
+- `deploy/`：Windows、Docker、Caddy 部署配置。
+- `test/`、`server/test_server.py`：客户端与服务端自动测试。
